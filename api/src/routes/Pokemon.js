@@ -11,6 +11,7 @@ const router = Router()
 
 router.get('/get', getAll)
 
+
 //POST
 
 module.exports = router;

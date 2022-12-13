@@ -13,7 +13,7 @@ module.exports = (sequelize) => {
       type: DataTypes.STRING,
       allowNull: false,
     },
-    life: {
+    life: { //hp
       type: DataTypes.INTEGER,
     },
     attack: {
@@ -31,7 +31,7 @@ module.exports = (sequelize) => {
     weight: {
       type: DataTypes.DECIMAL,
     },
-    sprite:{
+    image:{ //sprite
       type: DataTypes.STRING,
     }
   });
