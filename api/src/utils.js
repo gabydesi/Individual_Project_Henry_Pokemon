@@ -1,4 +1,6 @@
 const axios = require('axios')
+const {Pokemon, Type} = require('../src/db');
+const { getAll } = require('./controllers/Pokemon');
 
 //métodos para buscar info en la API
 async function getResponse(url){
@@ -47,8 +49,9 @@ function getWeightAttributes(responseData){
 }
 
 function getImgAttributes(responseData){
-    return responseData.data.sprites.other.dream_world.front_default;
+    return responseData.data.sprites.other.dream_world.front_default
 }
+
 
 module.exports = {
     getResponse,
@@ -60,5 +63,6 @@ module.exports = {
     getSpeedAttributes,
     getHeightAttributes,
     getWeightAttributes,
-    getImgAttributes
+    getImgAttributes,
+    
 }
