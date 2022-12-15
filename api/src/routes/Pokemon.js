@@ -8,9 +8,9 @@ const { getAll, getId, getName, postCreate } = require('../controllers/Pokemon')
 const router = Router()
 
 //GET
-router.get('/get', getAll)
-router.get('/get/:id', getId)
-router.get('/get/get?Name', getName) //no estoy segura
+router.get('/', getAll)
+router.get('/:pokemonId', getId)
+router.get('/?pokemonName', getName) //no estoy segura
 
 //POST
 router.post('/create', postCreate)

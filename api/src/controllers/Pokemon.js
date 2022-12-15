@@ -28,7 +28,7 @@ const {
 
 const getAll = async(req, res, next) => {
 
-    let pokeLimit = 10; //no sé como establecer acá el límite
+    let pokeLimit = 40; //no sé como establecer acá el límite
     try {
     //pedido a la api
         const pokeRequest = await axios.get(`https://pokeapi.co/api/v2/pokemon?limit=${pokeLimit}`)
@@ -67,15 +67,7 @@ const getAll = async(req, res, next) => {
 //obtener los pokemones de la db
 const getPokemonDb = async() => {
     try{
-        const pokemonDb = await Pokemon.findAll({
-            include:{
-                attributes: ["name"],
-                model: Type,
-                through: {
-                attributes: [],
-                },
-            }
-        });
+        const pokemonDb = await Pokemon.findAll({include:Type})
         return pokemonDb;
     } catch(error){
         return error;
@@ -94,12 +86,11 @@ const getPokeApiDb = async()=>{
     }
 }
 
-// [ ] GET /pokemons/{idPokemon}:
-// Obtener el detalle de un pokemon en particular
-// Debe traer solo los datos pedidos en la ruta de detalle de pokemon
-// Tener en cuenta que tiene que funcionar tanto para un id de un pokemon existente en pokeapi o uno creado por ustedes
-const getId = async(req, res, next, pokemonId) => {
+//traer pokemon por ID desde la api
+const getId = async(req, res, next) => {
+
     try {
+        const {pokemonId} = req.params
         //busco los pokemones por ID desde la api
         const pokeId = await axios.get(`https://pokeapi.co/api/v2/pokemon/${pokemonId}`)
 
@@ -119,9 +110,8 @@ const getId = async(req, res, next, pokemonId) => {
                     image: pokId.data.sprites.other.dream_world.front_default,
                 })
             
-            
         }else{
-            res.json({message: "Error, something went wrong"})
+            res.json({message: `The id: ${pokemonId} requested doesn't exist`})
         }
     } catch (error) {
         next(error)
@@ -131,7 +121,35 @@ const getId = async(req, res, next, pokemonId) => {
 // [ ] GET /pokemons?name="...":
 // Obtener el pokemon que coincida exactamente con el nombre pasado como query parameter (Puede ser de pokeapi o creado por nosotros)
 // Si no existe ningún pokemon mostrar un mensaje adecuado
-const getName = (req, res, next) => {}
+const getName = async(req, res, next) => {
+    try {
+        const {pokemonName} = req.query
+        const pokeName = await axios.get(`https://pokeapi.co/api/v2/pokemon/${pokemonName}`)
+
+        if(pokeName){
+            let pokName = pokeName
+
+            res.send({
+                id: pokName.data.id,
+                name: pokName.data.name,
+                type: pokName.data.types.map(element => {return (element.type.name)}),
+                life: pokName.data.stats[0].base_stat,
+                attack:pokName.data.stats[1].base_stat,
+                defense:pokName.data.stats[2].base_stat,
+                speed: pokName.data.stats[5].base_stat,
+                height: pokName.data.height,
+                weight: pokName.data.weight, 
+                image: pokName.data.sprites.other.dream_world.front_default,
+            })
+            
+        }else{
+            res.json({message: `The name: ${pokemonName} requested doesn't exist`})
+        }
+
+    } catch (error) {
+        next(error)
+    }
+}
 
 // [ ] POST /pokemons:
 // Recibe los datos recolectados desde el formulario controlado de la ruta de creación de pokemons por body

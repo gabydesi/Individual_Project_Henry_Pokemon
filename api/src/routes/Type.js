@@ -4,6 +4,6 @@ const { getType } = require('../controllers/Pokemon');
 const router = Router()
 
 //GET
-router.get('/get', getType)
+router.get('/type', getType)
 
 module.exports = router;
