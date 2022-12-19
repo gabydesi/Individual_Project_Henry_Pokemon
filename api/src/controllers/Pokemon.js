@@ -17,24 +17,20 @@ const {
 } = require('../utils')
 
 
-
-// GET https://pokeapi.co/api/v2/pokemon
-// GET https://pokeapi.co/api/v2/pokemon/{id}
-// GET https://pokeapi.co/api/v2/pokemon/{name}
-// GET https://pokeapi.co/api/v2/type
-
-
-//para obtener los pokemones de la api
+//Request all the pokemons from API
 
 const getAll = async(req, res, next) => {
 
-    let pokeLimit = 40; //no sé como establecer acá el límite
+    let pokeLimit = 40; 
     try {
     //pedido a la api
         const pokeRequest = await axios.get(`https://pokeapi.co/api/v2/pokemon?limit=${pokeLimit}`)
 
-        if(pokeRequest){
-            let pokElements = await Promise.all(pokeRequest.data.results.map(async element=>{
+    //pedido a la db
+        const pokeRequestDb = await Pokemon.findAll({include:Type})
+
+        if(pokeRequest || pokeRequestDb){
+            let pokElements = await Promise.all(pokeRequest.data.results?.map(async element=>{
                 let responseData = await getResponse(element.url)
                 
                 return {
@@ -52,7 +48,11 @@ const getAll = async(req, res, next) => {
                 }
             }))
 
-            res.send(pokElements) //me muestra la data traida de la api
+            let mixApiDb = [...pokElements, ...pokeRequestDb]
+
+            res.send(mixApiDb)
+
+            //res.send(pokElements) //me muestra la data traida de la api
             //res.send(pokeRequest.data) //me muestra toda la data
 
         }else{
@@ -64,35 +64,14 @@ const getAll = async(req, res, next) => {
     }
 }
 
-//obtener los pokemones de la db
-const getPokemonDb = async() => {
-    try{
-        const pokemonDb = await Pokemon.findAll({include:Type})
-        return pokemonDb;
-    } catch(error){
-        return error;
-    }
-}
-
-//unir info de Api y DB
-const getPokeApiDb = async()=>{ 
-    try {
-        let pokeApi = await getAll()
-        let pokeDb = await getPokemonDb()
-
-        return pokeApi.concat(pokeDb)
-    } catch (error) {
-        return(error)
-    }
-}
-
-//traer pokemon por ID desde la api
+//Pokemon ID request from API
 const getId = async(req, res, next) => {
 
     try {
         const {pokemonId} = req.params
         //busco los pokemones por ID desde la api
         const pokeId = await axios.get(`https://pokeapi.co/api/v2/pokemon/${pokemonId}`)
+
 
         if(pokeId){
             let pokId = pokeId
@@ -118,9 +97,20 @@ const getId = async(req, res, next) => {
     }
 }
 
-// [ ] GET /pokemons?name="...":
-// Obtener el pokemon que coincida exactamente con el nombre pasado como query parameter (Puede ser de pokeapi o creado por nosotros)
-// Si no existe ningún pokemon mostrar un mensaje adecuado
+//Pokemon ID request from DB
+const getPokemonByIdDb = async(pokemonId)=>{
+    try {
+        const findPokeDb = await Pokemon.findOne({
+            where: {id: pokemonId},
+            include: Type, 
+        })
+        return findPokeDb
+    } catch (error) {
+        next(error)
+    }
+}
+
+// Pokemon NAME request from API
 const getName = async(req, res, next) => {
     try {
         const {pokemonName} = req.query
@@ -151,13 +141,38 @@ const getName = async(req, res, next) => {
     }
 }
 
-// [ ] POST /pokemons:
-// Recibe los datos recolectados desde el formulario controlado de la ruta de creación de pokemons por body
-// Crea un pokemon en la base de datos relacionado con sus tipos.
-const postCreate = (req, res, next) => {}
+//Pokemon NAME request from DB
+const getPokemonByNameDb = async(pokemonName)=>{
+    try {
+        const findPokNameDb = await Pokemon.findOne({
+            where: Sequelize.where(
+                Sequelize.fn('lower', Sequelize.col('pokemon.name')), //con sequelize llama a la columna especificada, con minuscula
+                Sequelize.fn('lower', pokemonName)
+            ),
+            include: {
+                attributes: ["name"],
+                model: Type,
+            }
+        })
+        return findPokNameDb;
+    } catch (error) {
+        next(error)
+    }
+}
 
+// Create a new pokemon
+const postCreate = async(req, res, next) => {
+// console.log(req.body)
+    try {
+        const { name, type, life, attack, defense, speed, height, weight, image } = req.body
+        await Pokemon.create({name, type, life, attack, defense, speed, height, weight, image})
+        res.send("Pokemon created correctly")
+    } catch (error) {
+        res.status(400).send({error: error.message})
+    }
+}
 
-// Obtiene los tipos de pokemon desde la api
+// Pokemon TYPE request from API
 const getType = async(req, res, next) => {
     try {
         //pedido de la info a la api
@@ -184,15 +199,15 @@ const getType = async(req, res, next) => {
 }
 
 
-
-
-    
 module.exports = {
     getAll,
     getId,
     getName,
     postCreate,
-    getType
+    getType,
+    getPokemonByIdDb,
+    getPokemonByNameDb,
+
 }
 
 
