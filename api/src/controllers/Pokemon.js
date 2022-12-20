@@ -17,6 +17,25 @@ const {
 } = require('../utils')
 
 
+function buildPokemonFromDb(poke){
+    let pokemons = []
+    poke.forEach(pokemon=>{
+        pokemons.push({
+            id: pokemon.dataValues.id,
+            name: pokemon.dataValues.name,
+            type: pokemon.dataValues.types.map(type=> type.name),
+            life: pokemon.dataValues.life,
+            attack:pokemon.dataValues.attack,
+            defense:pokemon.dataValues.defense,
+            speed: pokemon.dataValues.speed,
+            height: pokemon.dataValues.height,
+            weight: pokemon.dataValues.weight, 
+            image: pokemon.dataValues.image,    
+        })
+    })
+    return pokemons
+}
+
 //Request all the pokemons from API
 
 const getAll = async(req, res, next) => {
@@ -27,7 +46,8 @@ const getAll = async(req, res, next) => {
         const pokeRequest = await axios.get(`https://pokeapi.co/api/v2/pokemon?limit=${pokeLimit}`)
 
     //pedido a la db
-        const pokeRequestDb = await Pokemon.findAll({include:Type})
+        const pokeRequestDb = await Pokemon.findAll({include: Type})
+        let pokemonsFromDb = buildPokemonFromDb(pokeRequestDb)
 
         if(pokeRequest || pokeRequestDb){
             let pokElements = await Promise.all(pokeRequest.data.results?.map(async element=>{
@@ -48,7 +68,7 @@ const getAll = async(req, res, next) => {
                 }
             }))
 
-            let mixApiDb = [...pokElements, ...pokeRequestDb]
+            let mixApiDb = [...pokElements, ...pokemonsFromDb]
 
             res.send(mixApiDb)
 
@@ -71,7 +91,6 @@ const getId = async(req, res, next) => {
         const {pokemonId} = req.params
         //busco los pokemones por ID desde la api
         const pokeId = await axios.get(`https://pokeapi.co/api/v2/pokemon/${pokemonId}`)
-
 
         if(pokeId){
             let pokId = pokeId
@@ -156,7 +175,7 @@ const getPokemonByNameDb = async(pokemonName)=>{
         })
         return findPokNameDb;
     } catch (error) {
-        next(error)
+        next(error)  
     }
 }
 
@@ -165,10 +184,34 @@ const postCreate = async(req, res, next) => {
 // console.log(req.body)
     try {
         const { name, type, life, attack, defense, speed, height, weight, image } = req.body
-        await Pokemon.create({name, type, life, attack, defense, speed, height, weight, image})
-        res.send("Pokemon created correctly")
+
+         //validaciones
+        if(!name || !image){
+            res.json({error : "These are require fields."})
+        } 
+
+        // let pokemonSearchApi = await getName(name)
+        // let pokemonSearchDb = await getPokemonByNameDb(name)
+
+        // if(pokemonSearchApi === name || pokemonSearchDb === name){
+        //     res.json({error : "Pokemon name, already exist. Please try with other name."})
+        // }
+
+       
+        let pokemonDb = await Pokemon.create({name, life, defense, speed,  attack, height, weight, image})
+        
+        
+        await type.forEach(async typeDetail=> { 
+            let typeDb = await Type.create({name: typeDetail})
+            await pokemonDb.addType(typeDb)
+        })
+    
+            res.send("Pokemon created correctly")
+        
+
     } catch (error) {
-        res.status(400).send({error: error.message})
+        next(error)
+        
     }
 }
 
@@ -178,9 +221,12 @@ const getType = async(req, res, next) => {
         //pedido de la info a la api
         const pokeTypeRequest = await axios.get('https://pokeapi.co/api/v2/type')
 
-        if(pokeTypeRequest){
+        //pedido de la info a la db
+        const pokeTypeDb = await Type.findAll({Type})
 
-            let pokeType = await Promise.all(pokeTypeRequest.data.results.map(async element=>{
+        if(pokeTypeRequest || pokeTypeDb){
+
+            let pokeType = await Promise.all(pokeTypeRequest.data.results?.map(async element=>{
             let responseData = await getResponse(element.url)
 
             return {
@@ -188,7 +234,10 @@ const getType = async(req, res, next) => {
                 name: element.name
             }
             })) 
-            res.send(pokeType)
+
+            let typeMixApiDb = [...pokeType, ...pokeTypeDb]
+            res.send(typeMixApiDb)
+            //res.send(pokeType)
             //res.send(pokeTypeRequest.data) //me muestra toda la data
         }else{
             res.json({message: "Error, something went wrong"})
